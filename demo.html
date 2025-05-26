@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cursor機能デモンストレーター</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Hiragino Sans', 'Yu Gothic UI', 'Meiryo', sans-serif;
+            background: #1e1e1e;
+            color: #e4e4e4;
+            overflow-x: hidden;
+        }
+
+        .demo-container {
+            display: flex;
+            height: 100vh;
+        }
+
+        .sidebar {
+            width: 300px;
+            background: #252526;
+            padding: 20px;
+            border-right: 1px solid #3e3e42;
+            overflow-y: auto;
+        }
+
+        .demo-section {
+            margin-bottom: 30px;
+            padding: 15px;
+            background: #2d2d30;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+
+        .demo-section:hover {
+            background: #383838;
+            border-color: #007acc;
+        }
+
+        .demo-section.active {
+            border-color: #007acc;
+            background: #264f78;
+        }
+
+        .demo-title {
+            font-size: 16px;
+            font-weight: bold;
+            color: #4fc3f7;
+            margin-bottom: 8px;
+        }
+
+        .demo-description {
+            font-size: 12px;
+            color: #cccccc;
+            line-height: 1.4;
+        }
+
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .editor-container {
+            flex: 1;
+            position: relative;
+            background: #1e1e1e;
+        }
+
+        .editor {
+            width: 100%;
+            height: 100%;
+            background: #1e1e1e;
+            color: #d4d4d4;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 14px;
+            padding: 20px;
+            border: none;
+            outline: none;
+            resize: none;
+            line-height: 1.6;
+        }
+
+        .chat-container {
+            height: 300px;
+            background: #252526;
+            border-top: 1px solid #3e3e42;
+            display: none;
+            flex-direction: column;
+        }
+
+        .chat-container.active {
+            display: flex;
+        }
+
+        .chat-header {
+            padding: 10px 20px;
+            background: #2d2d30;
+            color: #4fc3f7;
+            font-weight: bold;
+            border-bottom: 1px solid #3e3e42;
+        }
+
+        .chat-messages {
+            flex: 1;
+            padding: 15px;
+            overflow-y: auto;
+        }
+
+        .message {
+            margin-bottom: 15px;
+            padding: 10px;
+            border-radius: 8px;
+        }
+
+        .user-message {
+            background: #264f78;
+            color: #ffffff;
+        }
+
+        .ai-message {
+            background: #1a472a;
+            color: #ffffff;
+        }
+
+        .overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+        }
+
+        .overlay.active {
+            display: flex;
+        }
+
+        .demo-animation {
+            background: #2d2d30;
+            padding: 30px;
+            border-radius: 15px;
+            max-width: 600px;
+            text-align: center;
+        }
+
+        .typing-animation {
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 16px;
+            color: #4fc3f7;
+            border-right: 2px solid #4fc3f7;
+            white-space: nowrap;
+            overflow: hidden;
+            animation: typing 0.1s steps(1, end), blink-caret 1s step-end infinite;
+        }
+
+        @keyframes typing {
+            from { width: 0; }
+            to { width: 100%; }
+        }
+
+        @keyframes blink-caret {
+            from, to { border-color: transparent; }
+            50% { border-color: #4fc3f7; }
+        }
+
+        .keyboard-hint {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0, 122, 204, 0.9);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 5px;
+            font-size: 12px;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        .progress-bar {
+            height: 4px;
+            background: #3e3e42;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #007acc, #4fc3f7);
+            width: 0%;
+            transition: width 0.5s ease;
+        }
+
+        .demo-controls {
+            padding: 15px 20px;
+            background: #2d2d30;
+            border-top: 1px solid #3e3e42;
+            display: flex;
+            gap: 10px;
+        }
+
+        .control-btn {
+            background: #007acc;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s ease;
+        }
+
+        .control-btn:hover {
+            background: #106ebe;
+            transform: translateY(-1px);
+        }
+
+        .control-btn:disabled {
+            background: #666;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .status-bar {
+            height: 25px;
+            background: #007acc;
+            color: white;
+            display: flex;
+            align-items: center;
+            padding: 0 15px;
+            font-size: 12px;
+        }
+
+        .syntax-highlight {
+            color: #569cd6;
+        }
+
+        .string-highlight {
+            color: #ce9178;
+        }
+
+        .comment-highlight {
+            color: #6a9955;
+            font-style: italic;
+        }
+
+        .function-highlight {
+            color: #dcdcaa;
+        }
+    </style>
+</head>
+<body>
+    <div class="demo-container">
+        <div class="sidebar">
+            <h2 style="color: #4fc3f7; margin-bottom: 20px; text-align: center;">🚀 Cursor機能デモ</h2>
+            
+            <div class="demo-section" data-demo="tab-completion">
+                <div class="demo-title">⚡ Tab補完</div>
+                <div class="demo-description">コメントや関数名からコードを自動生成</div>
+            </div>
+
+            <div class="demo-section" data-demo="cmd-k">
+                <div class="demo-title">🔧 Cmd+K編集</div>
+                <div class="demo-description">選択したコードをAIで編集・改善</div>
+            </div>
+
+            <div class="demo-section" data-demo="cmd-l">
+                <div class="demo-title">💬 Cmd+Lチャット</div>
+                <div class="demo-description">AIとリアルタイムでコード相談</div>
+            </div>
+
+            <div class="demo-section" data-demo="composer">
+                <div class="demo-title">🎼 Composer</div>
+                <div class="demo-description">複数ファイルの大規模編集</div>
+            </div>
+
+            <div class="demo-section" data-demo="at-reference">
+                <div class="demo-title">📁 @機能</div>
+                <div class="demo-description">特定ファイルやフォルダを参照</div>
+            </div>
+
+            <div class="demo-section" data-demo="error-fix">
+                <div class="demo-title">🐛 エラー修正</div>
+                <div class="demo-description">エラーの検出と自動修正提案</div>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+            
+            <div class="editor-container">
+                <textarea class="editor" id="codeEditor" placeholder="ここにコードが表示されます..."></textarea>
+                <div class="keyboard-hint" id="keyboardHint">Tabキーを押してください</div>
+                <div class="overlay" id="demoOverlay">
+                    <div class="demo-animation">
+                        <div class="typing-animation" id="typingText"></div>
+                        <p style="margin-top: 20px; color: #cccccc;">デモンストレーション中...</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="chat-container" id="chatContainer">
+                <div class="chat-header">💬 AI チャット - Cmd+L</div>
+                <div class="chat-messages" id="chatMessages"></div>
+            </div>
+
+            <div class="demo-controls">
+                <button class="control-btn" id="startDemo">▶️ デモ開始</button>
+                <button class="control-btn" id="pauseDemo" disabled>⏸️ 一時停止</button>
+                <button class="control-btn" id="resetDemo">🔄 リセット</button>
+                <button class="control-btn" id="nextStep" disabled>➡️ 次のステップ</button>
+            </div>
+
+            <div class="status-bar">
+                <span id="statusText">デモを選択してください</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class CursorDemo {
+            constructor() {
+                this.currentDemo = null;
+                this.isPlaying = false;
+                this.currentStep = 0;
+                this.demos = {
+                    'tab-completion': {
+                        title: 'Tab補完デモ',
+                        steps: [
+                            {
+                                code: '# ユーザーの年齢を入力として受け取る関数を作る',
+                                hint: 'Tabキーを押してください',
+                                delay: 1000
+                            },
+                            {
+                                code: `# ユーザーの年齢を入力として受け取る関数を作る
+def get_user_age():
+    age = int(input("年齢を入力してください: "))
+    return age`,
+                                hint: 'コードが自動生成されました！',
+                                delay: 2000
+                            },
+                            {
+                                code: `# ユーザーの年齢を入力として受け取る関数を作る
+def get_user_age():
+    age = int(input("年齢を入力してください: "))
+    return age
+
+# 年齢チェック関数を作る`,
+                                hint: 'さらにTabで次のコードも生成',
+                                delay: 1500
+                            },
+                            {
+                                code: `# ユーザーの年齢を入力として受け取る関数を作る
+def get_user_age():
+    age = int(input("年齢を入力してください: "))
+    return age
+
+# 年齢チェック関数を作る
+def check_age(age):
+    if age >= 18:
+        return "成人です"
+    else:
+        return "未成年です"`,
+                                hint: '完成！コメントからコードが生成されました',
+                                delay: 2500
+                            }
+                        ]
+                    },
+                    'cmd-k': {
+                        title: 'Cmd+K編集デモ',
+                        steps: [
+                            {
+                                code: `def calculate(a, b):
+    result = a + b
+    return result`,
+                                hint: 'コードを選択してCmd+Kを押してください',
+                                delay: 1500
+                            },
+                            {
+                                code: `def calculate(a, b):
+    result = a + b
+    return result`,
+                                hint: '"エラーハンドリングを追加して"と入力',
+                                showOverlay: true,
+                                overlayText: 'エラーハンドリングを追加して',
+                                delay: 2000
+                            },
+                            {
+                                code: `def calculate(a, b):
+    try:
+        if not isinstance(a, (int, float)) or not isinstance(b, (int, float)):
+            raise TypeError("引数は数値である必要があります")
+        result = a + b
+        return result
+    except TypeError as e:
+        print(f"エラー: {e}")
+        return None`,
+                                hint: 'エラーハンドリングが自動追加されました！',
+                                delay: 3000
+                            }
+                        ]
+                    },
+                    'cmd-l': {
+                        title: 'Cmd+Lチャットデモ',
+                        steps: [
+                            {
+                                code: `def fibonacci(n):
+    if n <= 1:
+        return n
+    return fibonacci(n-1) + fibonacci(n-2)`,
+                                hint: 'Cmd+Lでチャットを開いてください',
+                                delay: 1500
+                            },
+                            {
+                                code: `def fibonacci(n):
+    if n <= 1:
+        return n
+    return fibonacci(n-1) + fibonacci(n-2)`,
+                                hint: 'AIにコードについて質問してみましょう',
+                                showChat: true,
+                                chatMessages: [
+                                    { type: 'user', text: 'この関数の動作を詳しく説明してください' }
+                                ],
+                                delay: 2000
+                            },
+                            {
+                                code: `def fibonacci(n):
+    if n <= 1:
+        return n
+    return fibonacci(n-1) + fibonacci(n-2)`,
+                                hint: 'AIが詳しく説明してくれます',
+                                showChat: true,
+                                chatMessages: [
+                                    { type: 'user', text: 'この関数の動作を詳しく説明してください' },
+                                    { type: 'ai', text: 'この関数はフィボナッチ数列を計算します。再帰的に定義されており、n番目のフィボナッチ数を返します。ベースケースとして、nが0または1の場合はnそのものを返し、それ以外の場合は前の2つの数の和を返します。' }
+                                ],
+                                delay: 3000
+                            }
+                        ]
+                    },
+                    'composer': {
+                        title: 'Composerデモ',
+                        steps: [
+                            {
+                                code: `# プロジェクト構造
+# - main.py
+# - utils.py
+# - config.py`,
+                                hint: 'Composerで複数ファイルを編集',
+                                delay: 1500
+                            },
+                            {
+                                code: `# main.py
+from utils import calculate
+from config import CONFIG
+
+def main():
+    result = calculate(CONFIG['x'], CONFIG['y'])
+    print(f"結果: {result}")
+
+if __name__ == "__main__":
+    main()`,
+                                hint: '複数ファイルにまたがるコードを生成',
+                                delay: 2500
+                            },
+                            {
+                                code: `# utils.py
+def calculate(x, y):
+    """計算を実行する関数"""
+    return x * y + 10
+
+# config.py  
+CONFIG = {
+    'x': 5,
+    'y': 3,
+    'debug': True
+}`,
+                                hint: '関連するファイルも自動で更新されました',
+                                delay: 3000
+                            }
+                        ]
+                    },
+                    'at-reference': {
+                        title: '@機能デモ',
+                        steps: [
+                            {
+                                code: `# @app.py このファイルのバグを見つけて`,
+                                hint: '@でファイルを指定して質問',
+                                delay: 1500
+                            },
+                            {
+                                code: `# @app.py このファイルのバグを見つけて
+def process_data(data):
+    result = []
+    for item in data:
+        if item > 0:  # バグ：Noneチェックなし
+            result.append(item * 2)
+    return result`,
+                                hint: 'AIが指定ファイルを分析中...',
+                                showOverlay: true,
+                                overlayText: 'ファイルを分析しています...',
+                                delay: 2000
+                            },
+                            {
+                                code: `# 修正されたコード
+def process_data(data):
+    if not data:  # データの存在チェック追加
+        return []
+    
+    result = []
+    for item in data:
+        if item is not None and item > 0:  # Noneチェック追加
+            result.append(item * 2)
+    return result`,
+                                hint: 'バグが発見され、修正案が提案されました！',
+                                delay: 3000
+                            }
+                        ]
+                    },
+                    'error-fix': {
+                        title: 'エラー修正デモ',
+                        steps: [
+                            {
+                                code: `def divide_numbers(a, b):
+    return a / b  # ZeroDivisionError の可能性
+
+result = divide_numbers(10, 0)
+print(result)`,
+                                hint: 'エラーが検出されました',
+                                delay: 1500
+                            },
+                            {
+                                code: `def divide_numbers(a, b):
+    return a / b  # ZeroDivisionError の可能性
+
+result = divide_numbers(10, 0)  # ❌ エラー
+print(result)`,
+                                hint: 'AIがエラーを検出し修正を提案',
+                                showOverlay: true,
+                                overlayText: 'ZeroDivisionErrorを修正しています...',
+                                delay: 2000
+                            },
+                            {
+                                code: `def divide_numbers(a, b):
+    if b == 0:
+        return "エラー: ゼロで割ることはできません"
+    return a / b
+
+result = divide_numbers(10, 0)
+print(result)  # "エラー: ゼロで割ることはできません"`,
+                                hint: 'エラーハンドリングが追加されました！',
+                                delay: 3000
+                            }
+                        ]
+                    }
+                };
+                this.initEventListeners();
+            }
+
+            initEventListeners() {
+                document.querySelectorAll('.demo-section').forEach(section => {
+                    section.addEventListener('click', () => {
+                        this.selectDemo(section.dataset.demo);
+                    });
+                });
+
+                document.getElementById('startDemo').addEventListener('click', () => {
+                    this.startDemo();
+                });
+
+                document.getElementById('pauseDemo').addEventListener('click', () => {
+                    this.pauseDemo();
+                });
+
+                document.getElementById('resetDemo').addEventListener('click', () => {
+                    this.resetDemo();
+                });
+
+                document.getElementById('nextStep').addEventListener('click', () => {
+                    this.nextStep();
+                });
+            }
+
+            selectDemo(demoType) {
+                document.querySelectorAll('.demo-section').forEach(section => {
+                    section.classList.remove('active');
+                });
+                
+                document.querySelector(`[data-demo="${demoType}"]`).classList.add('active');
+                
+                this.currentDemo = demoType;
+                this.currentStep = 0;
+                this.resetDemo();
+                
+                document.getElementById('statusText').textContent = 
+                    `${this.demos[demoType].title} が選択されました`;
+            }
+
+            startDemo() {
+                if (!this.currentDemo) {
+                    alert('まずデモを選択してください');
+                    return;
+                }
+
+                this.isPlaying = true;
+                document.getElementById('startDemo').disabled = true;
+                document.getElementById('pauseDemo').disabled = false;
+                document.getElementById('nextStep').disabled = false;
+                
+                this.runDemo();
+            }
+
+            pauseDemo() {
+                this.isPlaying = false;
+                document.getElementById('startDemo').disabled = false;
+                document.getElementById('pauseDemo').disabled = true;
+            }
+
+            resetDemo() {
+                this.isPlaying = false;
+                this.currentStep = 0;
+                
+                document.getElementById('startDemo').disabled = false;
+                document.getElementById('pauseDemo').disabled = true;
+                document.getElementById('nextStep').disabled = true;
+                
+                document.getElementById('codeEditor').value = '';
+                document.getElementById('keyboardHint').style.display = 'none';
+                document.getElementById('demoOverlay').classList.remove('active');
+                document.getElementById('chatContainer').classList.remove('active');
+                document.getElementById('progressFill').style.width = '0%';
+                
+                if (this.currentDemo) {
+                    document.getElementById('statusText').textContent = 
+                        `${this.demos[this.currentDemo].title} - リセット完了`;
+                }
+            }
+
+            nextStep() {
+                if (!this.currentDemo || this.currentStep >= this.demos[this.currentDemo].steps.length) {
+                    return;
+                }
+
+                this.executeStep(this.currentStep);
+                this.currentStep++;
+                
+                const progress = (this.currentStep / this.demos[this.currentDemo].steps.length) * 100;
+                document.getElementById('progressFill').style.width = `${progress}%`;
+                
+                if (this.currentStep >= this.demos[this.currentDemo].steps.length) {
+                    this.completeDemo();
+                }
+            }
+
+            executeStep(stepIndex) {
+                const step = this.demos[this.currentDemo].steps[stepIndex];
+                const editor = document.getElementById('codeEditor');
+                const hint = document.getElementById('keyboardHint');
+                const overlay = document.getElementById('demoOverlay');
+                const chatContainer = document.getElementById('chatContainer');
+                
+                // コードを段階的に表示
+                this.typeCode(editor, step.code);
+                
+                // ヒント表示
+                if (step.hint) {
+                    hint.textContent = step.hint;
+                    hint.style.display = 'block';
+                    setTimeout(() => {
+                        hint.style.display = 'none';
+                    }, step.delay);
+                }
+                
+                // オーバーレイ表示
+                if (step.showOverlay) {
+                    overlay.classList.add('active');
+                    document.getElementById('typingText').textContent = step.overlayText || '';
+                    setTimeout(() => {
+                        overlay.classList.remove('active');
+                    }, step.delay);
+                }
+                
+                // チャット表示
+                if (step.showChat) {
+                    chatContainer.classList.add('active');
+                    this.displayChatMessages(step.chatMessages);
+                }
+                
+                document.getElementById('statusText').textContent = 
+                    `${this.demos[this.currentDemo].title} - ステップ ${stepIndex + 1}/${this.demos[this.currentDemo].steps.length}`;
+            }
+
+            typeCode(editor, code) {
+                editor.value = '';
+                let i = 0;
+                const typeChar = () => {
+                    if (i < code.length) {
+                        editor.value += code.charAt(i);
+                        i++;
+                        setTimeout(typeChar, 50);
+                    }
+                };
+                typeChar();
+            }
+
+            displayChatMessages(messages) {
+                const chatMessages = document.getElementById('chatMessages');
+                chatMessages.innerHTML = '';
+                
+                messages.forEach((message, index) => {
+                    setTimeout(() => {
+                        const messageDiv = document.createElement('div');
+                        messageDiv.className = `message ${message.type}-message`;
+                        messageDiv.textContent = message.text;
+                        chatMessages.appendChild(messageDiv);
+                        chatMessages.scrollTop = chatMessages.scrollHeight;
+                    }, index * 1000);
+                });
+            }
+
+            runDemo() {
+                if (!this.isPlaying) return;
+                
+                this.nextStep();
+                
+                if (this.currentStep < this.demos[this.currentDemo].steps.length && this.isPlaying) {
+                    const currentStepData = this.demos[this.currentDemo].steps[this.currentStep - 1];
+                    setTimeout(() => {
+                        this.runDemo();
+                    }, currentStepData.delay);
+                }
+            }
+
+            completeDemo() {
+                this.isPlaying = false;
+                document.getElementById('startDemo').disabled = false;
+                document.getElementById('pauseDemo').disabled = true;
+                document.getElementById('nextStep').disabled = true;
+                document.getElementById('statusText').textContent = 
+                    `${this.demos[this.currentDemo].title} - 完了！`;
+                
+                setTimeout(() => {
+                    alert('デモが完了しました！他の機能も試してみてください。');
+                }, 1000);
+            }
+        }
+
+        // デモ初期化
+        const demo = new CursorDemo();
+
+        // キーボードショートカット
+        document.addEventListener('keydown', (e) => {
+            if (e.key === ' ' && !demo.isPlaying) {
+                e.preventDefault();
+                demo.startDemo();
+            } else if (e.key === 'ArrowRight' && demo.isPlaying) {
+                e.preventDefault();
+                demo.nextStep();
+            } else if (e.key === 'Escape') {
+                demo.resetDemo();
+            }
+        });
+    </script>
+</body>
+</html>

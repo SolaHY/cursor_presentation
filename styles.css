@@ -236,6 +236,40 @@ h3 {
     border: 1px solid #eee;
 }
 
+/* デモスライドのスタイル */
+.demo-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 30px;
+    margin: 30px 0;
+}
+
+.demo-video {
+    background: #f8f9fa;
+    padding: 20px;
+    border-radius: 15px;
+    box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+}
+
+.demo-gif {
+    width: 100%;
+    border-radius: 8px;
+    border: 1px solid #eee;
+}
+
+.demo-description {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.feature-image {
+    width: 100%;
+    border-radius: 8px;
+    margin-top: 15px;
+    border: 1px solid #eee;
+}
+
 @media (max-width: 768px) {
     .slide {
         padding: 25px;
@@ -254,6 +288,14 @@ h3 {
     }
     
     .screenshot-item {
+        padding: 15px;
+    }
+    
+    .demo-container {
+        grid-template-columns: 1fr;
+    }
+    
+    .demo-video {
         padding: 15px;
     }
 } 
